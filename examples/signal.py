@@ -9,21 +9,26 @@
 
 
 # This example shows how to listen for signals. Here we listen for any signal
-# but add_signal_handler() also accepts keyword arguments to only listen for
+# but signal_handler() also accepts keyword arguments to only listen for
 # specific signals.
 
 import sys
-from tdbus import *
+import tdbus
+from tdbus import DBusHandler, signal_handler, SimpleDBusConnection, DBUS_BUS_SESSION
 
-conn = Connection(DBUS_BUS_SESSION)
-dispatcher = BlockingDispatcher(conn)
+class SignalHandler(DBusHandler):
+    
+    @signal_handler()
+    def Signal(message):
+         print 'signal received: %s, args = %s' % (message.get_member(), repr(message.get_args()))
 
-def signal_handler(message, dispatcher):
-    print 'signal received: %s, args = %s' % (message.get_member(), repr(message.get_args()))
 
-dispatcher.add_signal_handler(callback=signal_handler)
+conn = tdbus.SimpleDBusConnection(DBUS_BUS_SESSION)
+handler = SignalHandler()
+conn.add_handler(handler)
 
-print 'Listening for signals. Press CTRL-\\ to quit.'
+print 'Listening for signals. Press CTRL-c to quit.'
 print
 
-dispatcher.dispatch()
+while True:
+    pass
