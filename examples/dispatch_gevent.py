@@ -8,32 +8,41 @@
 # complete list.
 
 
-# This example shows how to listen for signals. Here we listen for any signal
-# but add_signal_handler() also accepts keyword arguments to only listen for
+# This example shows how to listen for signals. Here we listen for any signal named "Hello" on interface 
+# com.example.Hello but signal_handler() also accepts keyword arguments to only listen for
 # specific signals.
 
 import sys
 import tdbus
-from tdbus import *
+from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, signal_handler, DBusHandler
+import gevent
 
-if not hasattr(tdbus, 'GEventDispatcher'):
+if not hasattr(tdbus, 'GEventDBusConnection'):
     print 'gevent is not available on this system'
     sys.exit(1)
 
-conn = Connection(DBUS_BUS_SESSION)
-dispatcher = GEventDispatcher(conn)
 
-def signal_handler(message, dispatcher):
-    print 'signal received: %s, args = %s' % (message.get_member(), repr(message.get_args()))
+class GEventHandler(DBusHandler):
 
-dispatcher.add_signal_handler(callback=signal_handler)
+    @signal_handler(interface="com.example.Hello")
+    def Hello(self, message):
+        print 'signal received: %s, args = %s' % (message.get_member(), repr(message.get_args()))
+
+
+
+conn = GEventDBusConnection(DBUS_BUS_SESSION)
+handler = GEventHandler()
+conn.add_handler(handler)
 
 print 'Listening for signals, with gevent dispatcher.'
-print 'Press CTRL-C to quit.'
+print 'In another terminal, issue:'
+print
+print '  $ dbus-send --session --type=signal --dest={} /com/example/TDBus com.example.Hello.Hello'.format(conn.get_unique_name())
+print
+print 'Press CTRL-c to exit.'
 print
 
-from gevent.hub import get_hub
-try:
-    get_hub().switch()
-except KeyboardInterrupt:
-    pass
+
+while True:
+    gevent.sleep(1)
+

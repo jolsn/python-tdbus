@@ -12,23 +12,25 @@
 # but signal_handler() also accepts keyword arguments to only listen for
 # specific signals.
 
-import sys
-import tdbus
 from tdbus import DBusHandler, signal_handler, SimpleDBusConnection, DBUS_BUS_SESSION
 
 class SignalHandler(DBusHandler):
-    
+
     @signal_handler()
-    def Signal(message):
+    def Signal(self, message):
          print 'signal received: %s, args = %s' % (message.get_member(), repr(message.get_args()))
 
 
-conn = tdbus.SimpleDBusConnection(DBUS_BUS_SESSION)
+conn = SimpleDBusConnection(DBUS_BUS_SESSION)
 handler = SignalHandler()
 conn.add_handler(handler)
 
 print 'Listening for signals. Press CTRL-c to quit.'
+print 'In another terminal, issue:'
+print
+print '  $ dbus-send --session --type=signal --dest={} /com/example/TDBus com.example.Hello.Signal'.format(conn.get_unique_name())
+print
+print 'Press CTRL-c to exit.'
 print
 
-while True:
-    pass
+conn.dispatch()

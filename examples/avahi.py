@@ -9,20 +9,20 @@
 
 # This example shows how to access Avahi on the D-BUS.
 
-import sys
-from tdbus import *
+
+from tdbus import SimpleDBusConnection, DBUS_BUS_SESSION, DBusHandler, signal_handler, DBusError
 
 CONN_AVAHI = 'org.freedesktop.Avahi'
 PATH_SERVER = '/'
 IFACE_SERVER = 'org.freedesktop.Avahi.Server'
 
-conn = Connection(DBUS_BUS_SYSTEM)
-dispatcher = BlockingDispatcher(conn)
+conn = SimpleDBusConnection(DBUS_BUS_SESSION)
+
 
 try:
-    result = dispatcher.call_method(PATH_SERVER, 'GetVersionString',
+    result = conn.call_method(PATH_SERVER, 'GetVersionString',
                         interface=IFACE_SERVER, destination=CONN_AVAHI)
-except Error:
+except DBusError:
     print 'Avahi NOT available.'
     raise
 
@@ -30,16 +30,19 @@ print 'Avahi is available at %s' % CONN_AVAHI
 print 'Avahi version: %s' % result[0]
 print
 print 'Browsing service types on domain: local'
-print 'Press CTRL-\\ to exit'
+print 'Press CTRL-c to exit'
 print
 
-result = dispatcher.call_method('/', 'ServiceTypeBrowserNew', interface=IFACE_SERVER,
+result = conn.call_method('/', 'ServiceTypeBrowserNew', interface=IFACE_SERVER,
                     destination=CONN_AVAHI, format='iisu', args=(-1, 0, 'local', 0))
 browser = result[0]
+print browser
+class AvahiHandler(DBusHandler):
 
-def item_new(message, dispatcher):
-    args = message.get_args()
-    print 'service %s exists on domain %s' % (args[2], args[3])
+    @signal_handler()
+    def ItemNew(self, message):
+	args = message.get_args()
+    	print 'service %s exists on domain %s' % (args[2], args[3])
 
-dispatcher.add_signal_handler(browser, 'ItemNew', item_new)
-dispatcher.dispatch()
+conn.add_handler(AvahiHandler)
+conn.dispatch()

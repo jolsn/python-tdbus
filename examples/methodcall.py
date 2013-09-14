@@ -9,23 +9,28 @@
 
 # This example shows how to handle a method call.
 
-from tdbus import *
+from tdbus import DBusHandler, method, SimpleDBusConnection, DBUS_BUS_SESSION
 
-conn = Connection(DBUS_BUS_SESSION)
-dispatcher = BlockingDispatcher(conn)
 
-def hello_handler(message, dispatcher):
-    hello = 'Hello, world!'
-    print 'receive a Hello request, responding with "%s"' % hello
-    dispatcher.send_method_return(message, 's', (hello,))
+class MethodHandler(DBusHandler):
 
-dispatcher.add_method_handler('/', 'Hello', hello_handler)
+    @method(interface="com.example.Hello", path="/com/example/TDBus")
+    def Hello(self, message):
+        hello = 'Hello world!'
+        print 'receive a Hello request, responding with "{}"'.format(hello)
+        self.set_response('s', (hello,))
+
+
+
+conn = SimpleDBusConnection(DBUS_BUS_SESSION)
+handler = MethodHandler()
+conn.add_handler(handler)
 
 print 'Exposing a hello world method on the bus.'
 print 'In another terminal, issue:'
 print
-print '  $ dbus-send --session --print-reply --dest=%s / com.example.Hello' % conn.get_unique_name()
+print '  $ dbus-send --session --print-reply --dest={} /com/example/TDBus com.example.Hello.Hello'.format(conn.get_unique_name())
 print
-print 'Press CTRL-\\ to exit.'
+print 'Press CTRL-c to exit.'
 print
-dispatcher.dispatch()
+conn.dispatch()
