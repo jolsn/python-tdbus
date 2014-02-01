@@ -13,6 +13,7 @@ from tdbus import _tdbus
 
 DBusError = _tdbus.Error
 
+MEMBER_REQUEST_NAME = "RequestName"
 
 class DBusConnection(object):
     """A connection to the D-BUS."""
@@ -44,6 +45,33 @@ class DBusConnection(object):
         """Return the unique connection name."""
         return self._connection.get_unique_name()
 
+    def register_name(self, name, do_no_queue=True, allow_replacement=True, replace_existing=True):
+        """Register a human readable name for this client
+
+        booleans relate to DBUS_NAME_FLAG_ALLOW_REPLACEMENT, DBUS_NAME_FLAG_REPLACE_EXISTING and DBUS_NAME_FLAG_DO_NOT_QUEUE
+        See http://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-names for their meaning
+
+
+        The reply is one of DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER, DBUS_REQUEST_NAME_REPLY_IN_QUEUE, DBUS_REQUEST_NAME_REPLY_EXISTS, DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER
+        these are defined on this the tdbus package
+        """
+        flags = 0
+
+        if do_no_queue:
+            flags += _tdbus.DBUS_NAME_FLAG_DO_NOT_QUEUE
+
+        if allow_replacement:
+            flags += _tdbus.DBUS_NAME_FLAG_ALLOW_REPLACEMENT
+
+        if replace_existing:
+            flags += _tdbus.DBUS_NAME_FLAG_REPLACE_EXISTING
+
+        reply = self.call_method(_tdbus.DBUS_PATH_DBUS, MEMBER_REQUEST_NAME, _tdbus.DBUS_INTERFACE_DBUS,
+                                             format="su", args=[name, flags],
+                                             destination=_tdbus.DBUS_SERVICE_DBUS, timeout=1)
+
+        return reply.get_args()[0]
+
     def send_method_return(self, message, format=None, args=None):
         """Send a method call return."""
         reply = _tdbus.Message(_tdbus.DBUS_MESSAGE_TYPE_METHOD_RETURN,
@@ -55,7 +83,7 @@ class DBusConnection(object):
 
     def send_error(self, message, error_name, format=None, args=None):
         """Send an error reply."""
-        reply = _tdbus.Message(_tbus.DBUS_MESSAGE_TYPE_ERROR,
+        reply = _tdbus.Message(_tdbus.DBUS_MESSAGE_TYPE_ERROR,
                                reply_serial=message.get_serial(),
                                destination=message.get_sender(),
                                error_name=error_name)
@@ -69,7 +97,7 @@ class DBusConnection(object):
         if '.' in member:
             member, interface = self._split_member(member)
         if interface is None:
-            raise Error('you need to specify the interface')
+            raise Exception('you need to specify the interface')
         message = _tdbus.Message(_tdbus.DBUS_MESSAGE_TYPE_SIGNAL,
                                  member=member, interface=interface, path=path)
         if destination is not None:
@@ -98,6 +126,11 @@ class DBusConnection(object):
     def call_method(self, path, member, interface=None, format=None, args=None,
                     destination=None, callback=None, timeout=None):
         """Call a method."""
+        if '.' in member:
+            member, interface = self._split_member(member)
+        if interface is None:
+            raise Exception('you need to specify the interface')
+
         message = _tdbus.Message(_tdbus.DBUS_MESSAGE_TYPE_METHOD_CALL,
                                  path=path, member=member, interface=interface,
                                  destination=destination)

@@ -7,18 +7,24 @@
 # complete list.
 
 import math
-import time
-from threading import Thread, currentThread
+from threading import Thread
 
-import tdbus
-from tdbus import *
+from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, DBusError, \
+    SimpleDBusConnection, method, DBusHandler
 from tdbus.test.base import BaseTest
-from nose.tools import assert_raises
+import unittest
+from tdbus.handler import signal_handler
+import gevent
+
 
 IFACE_EXAMPLE = 'com.example'
 
 
 class MessageTest(BaseTest):
+
+    @classmethod
+    def echo(cls, signature, _):
+        raise NotImplementedError
 
     def test_arg_byte(self):
         assert self.echo('y', (0,)) == (0,)
@@ -26,8 +32,9 @@ class MessageTest(BaseTest):
         assert self.echo('y', (0xff,)) == (0xff,)
 
     def test_arg_byte_out_of_range(self):
-        assert_raises(DBusError, self.echo, 'y', (-1,))
-        assert_raises(DBusError, self.echo, 'y', (0x100,))
+        with self.assertRaises(DBusError):
+            self.echo('y', (-1,))
+            self.echo('y', (0x100,))
 
     def test_arg_int16(self):
         assert self.echo('n', (-0x8000,)) == (-0x8000,)
@@ -37,8 +44,9 @@ class MessageTest(BaseTest):
         assert self.echo('n', (0x7fff,)) == (0x7fff,)
 
     def test_arg_int16_out_of_range(self):
-        assert_raises(DBusError, self.echo, 'n', (-0x8001,))
-        assert_raises(DBusError, self.echo, 'n', (0x8000,))
+        with self.assertRaises(DBusError):
+            self.echo('n', (-0x8001,))
+            self.echo('n', (0x8000,))
 
     def test_arg_uint16(self):
         assert self.echo('q', (0,)) == (0,)
@@ -46,8 +54,9 @@ class MessageTest(BaseTest):
         assert self.echo('q', (0xffff,)) == (0xffff,)
 
     def test_arg_uint16_out_of_range(self):
-        assert_raises(DBusError, self.echo, 'q', (-1,))
-        assert_raises(DBusError, self.echo, 'q', (0x10000,))
+        with self.assertRaises(DBusError):
+            self.echo('q', (-1,))
+            self.echo('q', (0x10000,))
 
     def test_arg_int32(self):
         assert self.echo('i', (-0x80000000,)) == (-0x80000000,)
@@ -57,8 +66,9 @@ class MessageTest(BaseTest):
         assert self.echo('i', (0x7fffffff,)) == (0x7fffffff,)
 
     def test_arg_int32_out_of_range(self):
-        assert_raises(DBusError, self.echo, 'i', (-0x80000001,))
-        assert_raises(DBusError, self.echo, 'i', (0x80000000,))
+        with self.assertRaises(DBusError):
+            self.echo('i', (-0x80000001,))
+            self.echo('i', (0x80000000,))
 
     def test_arg_uint32(self):
         assert self.echo('u', (0,)) == (0,)
@@ -66,8 +76,9 @@ class MessageTest(BaseTest):
         assert self.echo('u', (0xffffffff,)) == (0xffffffff,)
 
     def test_arg_uint32_out_of_range(self):
-        assert_raises(DBusError, self.echo, 'u', (-1,))
-        assert_raises(DBusError, self.echo, 'q', (0x100000000,))
+        with self.assertRaises(DBusError):
+            self.echo('u', (-1,))
+            self.echo('q', (0x100000000,))
 
     def test_arg_int64(self):
         assert self.echo('x', (-0x8000000000000000,)) == (-0x8000000000000000,)
@@ -77,8 +88,9 @@ class MessageTest(BaseTest):
         assert self.echo('x', (0x7fffffffffffffff,)) == (0x7fffffffffffffff,)
 
     def test_arg_int64_out_of_range(self):
-        assert_raises(DBusError, self.echo, 'x', (-0x8000000000000001,))
-        assert_raises(DBusError, self.echo, 'x', (0x8000000000000000,))
+        with self.assertRaises(DBusError):
+            self.echo('x', (-0x8000000000000001,))
+            self.echo('x', (0x8000000000000000,))
 
     def test_arg_uint64(self):
         assert self.echo('t', (0,)) == (0,)
@@ -86,8 +98,9 @@ class MessageTest(BaseTest):
         assert self.echo('t', (0xffffffffffffffff,)) == (0xffffffffffffffff,)
 
     def test_arg_uint64_out_of_range(self):
-        assert_raises(DBusError, self.echo, 't', (-1,))
-        assert_raises(DBusError, self.echo, 't', (0x10000000000000000,))
+        with self.assertRaises(DBusError):
+            self.echo('t', (-1,))
+            self.echo('t', (0x10000000000000000,))
 
     def test_arg_boolean(self):
         assert self.echo('y', (False,)) == (False,)
@@ -108,9 +121,9 @@ class MessageTest(BaseTest):
         inf = 1e1000
         assert self.echo('d', (inf,)) == (inf,)
         assert self.echo('d', (-inf,)) == (-inf,)
-        assert self.echo('d', (1/inf,)) == (1/inf,)  # 0
-        assert self.echo('d', (1/-inf,)) == (1/-inf,)  # -0
-        nan = inf/inf
+        assert self.echo('d', (1 / inf,)) == (1 / inf,)  # 0
+        assert self.echo('d', (1 / -inf,)) == (1 / -inf,)  # -0
+        nan = inf / inf
         assert math.isnan(self.echo('d', (nan,))[0])  # note: nan != nan
 
     def test_arg_string(self):
@@ -124,43 +137,51 @@ class MessageTest(BaseTest):
         assert self.echo('o', ('/foo/bar',)) == ('/foo/bar',)
 
     def test_arg_invalid_object_path(self):
-        assert_raises(DBusError, self.echo, 'o', ('foo',))
-        assert_raises(DBusError, self.echo, 'o', ('foo/bar',))
-        assert_raises(DBusError, self.echo, 'o', ('/foo/bar/',))
-        assert_raises(DBusError, self.echo, 'o', ('/foo//bar/',))
-        assert_raises(DBusError, self.echo, 'o', ('/foo bar/',))
+        with self.assertRaises(DBusError):
+            self.echo('o', ('foo',))
+            self.echo('o', ('foo/bar',))
+            self.echo('o', ('/foo/bar/',))
+            self.echo('o', ('/foo//bar/',))
+            self.echo('o', ('/foo bar/',))
 
     def test_arg_signature(self):
         assert self.echo('g', ('iii',)) == ('iii',)
 
     def test_arg_invalid_signature(self):
-        assert_raises(DBusError, self.echo, '*', (1,))
-        assert_raises(DBusError, self.echo, '(i', (1,))
-        assert_raises(DBusError, self.echo, 'i' * 256, (1,)*256)
-        def nested_tuple(d,v):
+        with self.assertRaises(DBusError):
+            self.echo('*', (1,))
+            self.echo('(i', (1,))
+            self.echo('i' * 256, (1,) * 256)
+
+        def nested_tuple(d, v):
             if d == 0:
                 return (v,)
-            return (nested_tuple(d-1,v),)
-        assert_raises(DBusError, self.echo, '('*33 + 'i' + ')'*33,
-                      nested_tuple(33,1))
-        assert_raises(DBusError, self.echo, 'a'*33+'i', nested_tuple(33,1))
+            return (nested_tuple(d - 1, v),)
+
+        with self.assertRaises(DBusError):
+            self.echo('(' * 33 + 'i' + ')' * 33,
+                          nested_tuple(33, 1))
+            self.echo('a' * 33 + 'i', nested_tuple(33, 1))
 
     def test_arg_variant(self):
         assert self.echo('v', (('i', 10),)) == (('i', 10),)
-        assert self.echo('v', (('ai', [1,2,3]),)) == (('ai', [1,2,3]),)
+        assert self.echo('v', (('ai', [1, 2, 3]),)) == (('ai', [1, 2, 3]),)
 
     def test_arg_invalid_variant(self):
-        assert_raises(DBusError, self.echo, 'v', (('ii', (1,2)),))
+        with self.assertRaises(DBusError):
+            self.echo('v', (('ii', (1, 2)),))
 
     def test_arg_multi(self):
         assert self.echo('ii', (1, 2)) == (1, 2)
         assert self.echo('iii', (1, 2, 3)) == (1, 2, 3)
 
     def test_arg_too_few(self):
-        assert_raises(DBusError, self.echo, 'ii', (1,))
+        with self.assertRaises(DBusError):
+            self.echo('ii', (1,))
 
     def test_arg_too_many(self):
-        assert_raises(DBusError, self.echo, 'ii', (1,2,3))
+        with self.assertRaises(DBusError):
+            self.echo('ii', (1, 2, 3))
 
     def test_arg_struct(self):
         assert self.echo('(i)', ((1,),)) == ((1,),)
@@ -170,16 +191,17 @@ class MessageTest(BaseTest):
                     ((((((1,),),),),),)
 
     def test_arg_invalid_struct(self):
-        assert_raises(DBusError, self.echo, '(i', ((10,),))
-        assert_raises(DBusError, self.echo, '(i}', ((10,),))
+        with self.assertRaises(DBusError):
+            self.echo('(i', ((10,),))
+            self.echo('(i}', ((10,),))
 
     def test_arg_array(self):
         assert self.echo('ai', ([1],)) == ([1],)
-        assert self.echo('ai', ([1,2],)) == ([1,2],)
-        assert self.echo('ai', ([1,2,3],)) == ([1,2,3],)
-        assert self.echo('a(ii)', ([(1,2), (3,4)],)) == ([(1,2),(3,4)],)
-        assert self.echo('av', ([('i',10),('s','foo')],)) == \
-                    ([('i',10),('s','foo')],)
+        assert self.echo('ai', ([1, 2],)) == ([1, 2],)
+        assert self.echo('ai', ([1, 2, 3],)) == ([1, 2, 3],)
+        assert self.echo('a(ii)', ([(1, 2), (3, 4)],)) == ([(1, 2), (3, 4)],)
+        assert self.echo('av', ([('i', 10), ('s', 'foo')],)) == \
+                    ([('i', 10), ('s', 'foo')],)
 
     def test_arg_dict(self):
         assert self.echo('a{ss}', ({'foo': 'bar'},)) == ({'foo': 'bar'},)
@@ -192,29 +214,34 @@ class MessageTest(BaseTest):
         assert self.echo('ay', ('foo',)) == ('foo',)
 
     def test_arg_byte_array_illegal_type(self):
-        assert_raises(DBusError, self.echo, 'ay', ([1,2,3],))
-
+        with self.assertRaises(DBusError):
+            self.echo('ay', ([1, 2, 3],))
 
 class EchoHandler(DBusHandler):
 
     @method(interface=IFACE_EXAMPLE)
-    def Echo(self, *args):
-        self.set_response(self.message.get_signature(), self.message.get_args())
+    def Echo(self, message):
+        self.set_response(message.get_signature(), message.get_args())
+
+    @signal_handler(interface=IFACE_EXAMPLE, member="Echo")
+    def echo_signal(self, message):
+        self.connection.send_signal()
+
 
     @method(interface=IFACE_EXAMPLE)
     def Stop(self, *args):
         self.connection.stop()
 
 
-class TestMessageSimple(MessageTest):
+class TestMessageSimple(unittest.TestCase, MessageTest):
 
     @classmethod
     def dbus_server(cls, conn):
         conn.dispatch()
 
     @classmethod
-    def setup_class(cls):
-        super(TestMessageSimple, cls).setup_class()
+    def setUpClass(cls):
+        super(TestMessageSimple, cls).setUpClass()
         handler = EchoHandler()
         conn = SimpleDBusConnection(DBUS_BUS_SESSION)
         conn.add_handler(handler)
@@ -224,23 +251,23 @@ class TestMessageSimple(MessageTest):
         cls.client = SimpleDBusConnection(DBUS_BUS_SESSION)
 
     @classmethod
-    def teardown_class(cls):
+    def tearDownClass(cls):
         cls.client.call_method('/', 'Stop', IFACE_EXAMPLE, destination=cls.server_name)
         cls.server.join()
-        super(TestMessageSimple, cls).teardown_class()
+        super(TestMessageSimple, cls).tearDownClass()
 
     @classmethod
-    def echo(cls, format=None, args=None):
-        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, format, args,
+    def echo(cls, signature=None, args=None):
+        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
                                        destination=cls.server_name, timeout=10)
         return reply.get_args()
 
 
-class TestMessageGEvent(MessageTest):
+class TestMessageGEvent(unittest.TestCase, MessageTest):
 
     @classmethod
-    def setup_class(cls):
-        super(TestMessageGEvent, cls).setup_class()
+    def setUpClass(cls):
+        super(TestMessageGEvent, cls).setUpClass()
         handler = EchoHandler()
         conn = GEventDBusConnection(DBUS_BUS_SESSION)
         conn.add_handler(handler)
@@ -248,7 +275,27 @@ class TestMessageGEvent(MessageTest):
         cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
 
     @classmethod
-    def echo(cls, format=None, args=None):
-        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, format, args,
+    def echo(cls, signature=None, args=None):
+        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
                                        destination=cls.server_name, timeout=10)
         return reply.get_args()
+
+
+class TestMessageName(unittest.TestCase, MessageTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMessageName, cls).setUpClass()
+        cls.server_name = "org.tdbus.Test"
+        handler = EchoHandler()
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
+        conn.register_name(cls.server_name)
+        conn.add_handler(handler)
+        cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
+
+    @classmethod
+    def echo(cls, signature=None, args=None):
+        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
+                                       destination=cls.server_name, timeout=10)
+        return reply.get_args()
+

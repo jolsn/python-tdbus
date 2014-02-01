@@ -14,7 +14,7 @@
 
 import sys
 import tdbus
-from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, signal_handler, DBusHandler
+from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, signal_handler, DBusHandler, method
 import gevent
 
 if not hasattr(tdbus, 'GEventDBusConnection'):
@@ -28,7 +28,34 @@ class GEventHandler(DBusHandler):
     def Hello(self, message):
         print 'signal received: %s, args = %s' % (message.get_member(), repr(message.get_args()))
 
+    @method(interface="com.example.Hello")
+    def HelloMethod(self, message):
+        print 'signal received: %s, args = %s' % (message.get_member(), repr(message.get_args()))
 
+    @method(interface="org.freedesktop.DBus.Introspectable")
+    def Introspect(self, message):
+        """Return DBus introspection data for debugging
+        
+        @see: http://dbus.freedesktop.org/doc/dbus-specification.html#introspection-format
+        """
+        
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<!-- /usr/share/dbus-1/interfaces/com.mastervolt.Iris.ShowDevice.xml -->
+<node name="/com/mastervolt/Iris">
+        <interface name="com.mastervolt.Iris">
+                <method name="HelloMethod">
+                        <arg type="s" name="somestring" direction="in" />
+                        <arg type="i" name="someint" direction="in" />
+                        <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+                </method>
+                 <signal name="Hello">
+                        <arg type="as" name="arrayofstrings" direction="in" />
+                </signal>
+                <!-- Add more methods/signals if you want -->
+        </interface>
+</node>"""
+        
+        self.set_response("s", [xml])
 
 conn = GEventDBusConnection(DBUS_BUS_SESSION)
 handler = GEventHandler()
@@ -38,11 +65,15 @@ print 'Listening for signals, with gevent dispatcher.'
 print 'In another terminal, issue:'
 print
 print '  $ dbus-send --session --type=signal --dest={} /com/example/TDBus com.example.Hello.Hello'.format(conn.get_unique_name())
+print '  $ dbus-send --session --print-reply --type=method_call --dest={} /com/example/TDBus com.example.Hello.HelloMethod'.format(conn.get_unique_name())
 print
 print 'Press CTRL-c to exit.'
 print
 
 
-while True:
-    gevent.sleep(1)
+from gevent.hub import get_hub
+try:
+    get_hub().switch()
+except KeyboardInterrupt:
+    pass
 

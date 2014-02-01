@@ -24,10 +24,13 @@ version_info = {
         'Operating System :: POSIX',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7'
-    ]
+    ],
+    "install_requires": [
+        "gevent>=1.0",
+    ],
 }
 
- 
+
 def pkgconfig(*args):
     """Run pkg-config."""
     output = subprocess.check_output(['pkg-config'] + list(args))
@@ -35,10 +38,10 @@ def pkgconfig(*args):
 
 
 setup(
-    package_dir = { '': 'lib' },
-    packages = ['tdbus', 'tdbus.test'],
-    ext_modules = [Extension('tdbus._tdbus', ['lib/tdbus/_tdbus.c'],
-              extra_compile_args = pkgconfig('--cflags', 'dbus-1'),
-              extra_link_args =  pkgconfig('--libs', 'dbus-1'))],
+    package_dir={ '': 'lib' },
+    packages=['tdbus', 'tdbus.test'],
+    ext_modules=[Extension('tdbus._tdbus', ['lib/tdbus/_tdbus.c'],
+              extra_compile_args=pkgconfig('--cflags', 'dbus-1'),
+              extra_link_args=pkgconfig('--libs', 'dbus-1'))],
     **version_info
 )

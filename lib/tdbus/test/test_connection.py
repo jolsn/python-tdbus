@@ -6,11 +6,8 @@
 # Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
 # complete list.
 
-import time
 from tdbus import *
 from tdbus.test.base import *
-
-from nose.tools import assert_raises
 
 
 class EventsNoMethods(object):
@@ -37,6 +34,30 @@ class TestSimpleDBusConnection(BaseTest):
 
     def test_get_unique_name(self):
         conn = SimpleDBusConnection(DBUS_BUS_SESSION)
+        name = conn.get_unique_name()
+        assert name.startswith(':')
+        conn.close()
+
+class TestGeventDBusConnection(BaseTest):
+    """Test suite for D-BUS connection."""
+
+    def test_connection_open(self):
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
+        conn.open(DBUS_BUS_SESSION)
+        conn.close()
+
+    def test_connection_init(self):
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
+        conn.close()
+
+    def test_connection_multiple_open(self):
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
+        conn.close()
+        conn.open(DBUS_BUS_SESSION)
+        conn.close()
+
+    def test_get_unique_name(self):
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
         name = conn.get_unique_name()
         assert name.startswith(':')
         conn.close()

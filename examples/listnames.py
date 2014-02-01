@@ -18,8 +18,8 @@ conn = SimpleDBusConnection(DBUS_BUS_SESSION)
 print 'Listing all well-known services on the system bus:'
 print
 
-result = conn.call_method('/', 'ListNames', 'org.freedesktop.DBus',
-                                destination='org.freedesktop.DBus')
+result = conn.call_method(tdbus.DBUS_PATH_DBUS, 'ListNames', tdbus.DBUS_INTERFACE_DBUS,
+                                destination=tdbus.DBUS_SERVICE_DBUS)
 
 for name in result.get_args()[0]:
     if not name.startswith(':'):

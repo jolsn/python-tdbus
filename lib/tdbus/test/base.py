@@ -8,11 +8,13 @@
 
 import os
 import re
-import subprocess
 import signal
+import subprocess
+import unittest
+
+from nose import SkipTest
 
 import tdbus
-from nose import SkipTest
 
 
 class BaseTest(object):
@@ -22,7 +24,7 @@ class BaseTest(object):
                             r'''([^"']*?|'[^']*'|"([^"\\]|\\.)*");?$''')
 
     @classmethod
-    def setup_class(cls):
+    def setUpClass(cls):
         try:
             output = subprocess.check_output(['dbus-launch', '--sh-syntax'])
         except OSError:
@@ -45,7 +47,7 @@ class BaseTest(object):
         cls._have_session_bus = True
 
     @classmethod
-    def teardown_class(cls):
+    def tearDownClass(cls):
         if not cls._have_session_bus:
             return
         os.kill(cls._bus_pid, signal.SIGTERM)

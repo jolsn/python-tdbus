@@ -6,10 +6,14 @@
 # Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
 # complete list.
 
-from tdbus._tdbus import DBUS_BUS_SESSION, DBUS_BUS_SYSTEM
+from tdbus._tdbus import DBUS_BUS_SESSION, DBUS_BUS_SYSTEM, \
+    DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER, DBUS_REQUEST_NAME_REPLY_IN_QUEUE, DBUS_REQUEST_NAME_REPLY_EXISTS, \
+    DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER, \
+    DBUS_INTERFACE_INTROSPECTABLE
 from tdbus.connection import DBusConnection, DBusError
 from tdbus.handler import DBusHandler, method, signal_handler
 from tdbus.select import SimpleDBusConnection
+
 
 try:
     from tdbus.gevent import GEventDBusConnection

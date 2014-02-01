@@ -18,7 +18,6 @@
 
 #include <dbus/dbus.h>
 
-
 /*
  * Some macros to make Python extensions in C less verbose.
  */
@@ -1329,6 +1328,12 @@ _tdbus_connection_open(const char *address)
         Py_END_ALLOW_THREADS
         if (connection == NULL)
             RETURN_DBUS_ERROR(error);
+    } else if (!strcmp(address, "<STARTER>")) {
+		Py_BEGIN_ALLOW_THREADS
+		connection = dbus_bus_get_private(DBUS_BUS_STARTER, &error);
+		Py_END_ALLOW_THREADS
+		if (connection == NULL)
+			RETURN_DBUS_ERROR(error);
     } else {
         Py_BEGIN_ALLOW_THREADS
         connection = dbus_connection_open_private(address, &error);
@@ -1833,12 +1838,20 @@ void init_tdbus(void) {
 
     EXPORT_STRING(DBUS_BUS_SYSTEM, "<SYSTEM>");
     EXPORT_STRING(DBUS_BUS_SESSION, "<SESSION>");
+    EXPORT_STRING(DBUS_BUS_STARTER, "<STARTER>");
 
-    #define EXPORT_INT_SYMBOL(name) \
+	#define EXPORT_INT_SYMBOL(name) \
+		do { \
+			if ((Pint = PyInt_FromLong(name)) == NULL) return; \
+			PyDict_SetItemString(Pdict, #name, Pint); \
+			Py_DECREF(Pint); \
+		} while (0)
+
+    #define EXPORT_STRING_SYMBOL(name) \
         do { \
-            if ((Pint = PyInt_FromLong(name)) == NULL) return; \
-            PyDict_SetItemString(Pdict, #name, Pint); \
-            Py_DECREF(Pint); \
+            if ((Pstr = PyString_FromString(#name)) == NULL) return; \
+            PyDict_SetItemString(Pdict, #name, Pstr); \
+            Py_DECREF(Pstr); \
         } while (0)
 
     EXPORT_INT_SYMBOL(DBUS_MAJOR_PROTOCOL_VERSION);
@@ -1855,6 +1868,33 @@ void init_tdbus(void) {
     EXPORT_INT_SYMBOL(DBUS_DISPATCH_DATA_REMAINS);
     EXPORT_INT_SYMBOL(DBUS_DISPATCH_COMPLETE);
     EXPORT_INT_SYMBOL(DBUS_DISPATCH_NEED_MEMORY);
+
+    //dbus-shared.h constants
+    EXPORT_STRING_SYMBOL(DBUS_SERVICE_DBUS);
+    EXPORT_STRING_SYMBOL(DBUS_PATH_DBUS);
+    EXPORT_STRING_SYMBOL(DBUS_PATH_LOCAL);
+
+    EXPORT_STRING_SYMBOL(DBUS_INTERFACE_DBUS);
+    EXPORT_STRING_SYMBOL(DBUS_INTERFACE_INTROSPECTABLE);
+    EXPORT_STRING_SYMBOL(DBUS_INTERFACE_PROPERTIES);
+    EXPORT_STRING_SYMBOL(DBUS_INTERFACE_PEER);
+    EXPORT_STRING_SYMBOL(DBUS_INTERFACE_LOCAL);
+
+    EXPORT_INT_SYMBOL(DBUS_NAME_FLAG_ALLOW_REPLACEMENT);
+    EXPORT_INT_SYMBOL(DBUS_NAME_FLAG_REPLACE_EXISTING);
+    EXPORT_INT_SYMBOL(DBUS_NAME_FLAG_DO_NOT_QUEUE);
+
+    EXPORT_INT_SYMBOL(DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER);
+    EXPORT_INT_SYMBOL(DBUS_REQUEST_NAME_REPLY_IN_QUEUE);
+    EXPORT_INT_SYMBOL(DBUS_REQUEST_NAME_REPLY_EXISTS);
+    EXPORT_INT_SYMBOL(DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER);
+    EXPORT_INT_SYMBOL(DBUS_RELEASE_NAME_REPLY_RELEASED);
+    EXPORT_INT_SYMBOL(DBUS_RELEASE_NAME_REPLY_NON_EXISTENT );
+    EXPORT_INT_SYMBOL(DBUS_RELEASE_NAME_REPLY_NOT_OWNER);\
+
+    EXPORT_INT_SYMBOL(DBUS_START_REPLY_SUCCESS);
+    EXPORT_INT_SYMBOL(DBUS_START_REPLY_ALREADY_RUNNING);
+
 
     #define EXPORT_STR_SYMBOL(name) \
         do { \

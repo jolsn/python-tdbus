@@ -23,12 +23,20 @@ class SignalHandler(DBusHandler):
 
 conn = SimpleDBusConnection(DBUS_BUS_SESSION)
 handler = SignalHandler()
+
 conn.add_handler(handler)
+
+# the next method needs to be called explicitly
+handler.subscribe_to_signals()
+
 
 print 'Listening for signals. Press CTRL-c to quit.'
 print 'In another terminal, issue:'
 print
 print '  $ dbus-send --session --type=signal --dest={} /com/example/TDBus com.example.Hello.Signal'.format(conn.get_unique_name())
+print
+print 'or (only when subscribe_to_signals() is used)'
+print '  $ dbus-send --session --type=signal /com/example/TDBus com.example.Hello.Signal'
 print
 print 'Press CTRL-c to exit.'
 print

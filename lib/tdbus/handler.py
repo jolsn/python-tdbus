@@ -13,6 +13,8 @@ import traceback
 
 from tdbus import _tdbus, DBusError
 
+MEMBER_ADDMATCH = "AddMatch"
+
 
 def method(path=None, member=None, interface=None):
     def _decorate(func):
@@ -22,7 +24,7 @@ def method(path=None, member=None, interface=None):
         func.interface = interface
         return func
     return _decorate
- 
+
 def signal_handler(path=None, member=None, interface=None):
     def _decorate(func):
         func.signal_handler = True
@@ -90,7 +92,7 @@ class DBusHandler(object):
                 lines += traceback.format_exception(*sys.exc_info())
                 for line in lines:
                     self.logger.error(line)
-                self.connection.send_error(message, 'UncaughtException')
+                self.connection.send_error(message, 'net.tdbus.UncaughtException', format="s", args=[str(e)])
             else:
                 fmt, args = self.local.response
                 self.connection.send_method_return(message, fmt, args)
@@ -111,3 +113,21 @@ class DBusHandler(object):
                     self.logger.error(line)
         else:
             return False
+
+    def subscribe_to_signals(self):
+        """
+        Call this to register all signal handlers with dbus.
+
+        The result of this is that signals will be delivered even if they are not explicitly sent to this client
+        """
+        # subscribe to signal handlers
+        for handler in self.signal_handlers.values():
+            member = "member='%s'" % handler.member if handler.member else  ""
+            interface = "interface='%s'" % handler.interface if handler.interface else  ""
+            path = "path='%s'" % handler.path if handler.path else  ""
+
+            signature = ','.join([string for string in [member, interface, path] if string])
+
+            self.connection.call_method(_tdbus.DBUS_PATH_DBUS, MEMBER_ADDMATCH, _tdbus.DBUS_INTERFACE_DBUS,
+                                         format="s", args=[signature],
+                                         destination=_tdbus.DBUS_SERVICE_DBUS, timeout=1)
