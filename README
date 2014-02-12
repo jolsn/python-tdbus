@@ -23,6 +23,10 @@ Building and Installing
  $ python setup.py build
  # python setup.py install
 
+ or using pip
+
+ $ pip install python-tdbus
+
 Requirements
 ============
 
@@ -33,7 +37,7 @@ Comments and Suggestion
 
 Feel free to add an issue on the Github site for python-tdbus:
 
-  https://github.com/geertj/python-tdbus
+  https://github.com/hmvp/python-tdbus
 
 Documentation
 =============

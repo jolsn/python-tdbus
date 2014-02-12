@@ -1,20 +1,18 @@
-#
-# This file is part of python-tdbus. Python-tdbus is free software
-# available under the terms of the MIT license. See the file "LICENSE" that
-# was provided together with this source file for the licensing terms.
-#
-# Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
-# complete list.
+"""
+This file is part of python-tdbus. Python-tdbus is free software
+available under the terms of the MIT license. See the file "LICENSE" that
+was provided together with this source file for the licensing terms.
 
-from tdbus import *
-from tdbus.test.base import *
+Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
+complete list.
+"""
+import unittest
 
-
-class EventsNoMethods(object):
-    pass
+from tdbus import SimpleDBusConnection, GEventDBusConnection, DBUS_BUS_SESSION
+from tdbus.test.base import BaseTest
 
 
-class TestSimpleDBusConnection(BaseTest):
+class TestSimpleDBusConnection(unittest.TestCase, BaseTest):
     """Test suite for D-BUS connection."""
 
     def test_connection_open(self):
@@ -38,7 +36,7 @@ class TestSimpleDBusConnection(BaseTest):
         assert name.startswith(':')
         conn.close()
 
-class TestGeventDBusConnection(BaseTest):
+class TestGeventDBusConnection(unittest.TestCase, BaseTest):
     """Test suite for D-BUS connection."""
 
     def test_connection_open(self):

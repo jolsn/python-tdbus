@@ -14,6 +14,8 @@ from tdbus import _tdbus
 DBusError = _tdbus.Error
 
 MEMBER_REQUEST_NAME = "RequestName"
+MEMBER_ADDMATCH = "AddMatch"
+
 
 class DBusConnection(object):
     """A connection to the D-BUS."""
@@ -71,6 +73,25 @@ class DBusConnection(object):
                                              destination=_tdbus.DBUS_SERVICE_DBUS, timeout=1)
 
         return reply.get_args()[0]
+
+    def subscribe_to_signals(self):
+        """
+        Call this to register all signal handlers with dbus.
+
+        The result of this is that signals will be delivered even if they are not explicitly sent to this client
+        """
+        for handler in self.handlers:
+            for signal_handler in handler.signal_handlers.values():
+                member = "member='%s'" % signal_handler.member if signal_handler.member else  ""
+                interface = "interface='%s'" % signal_handler.interface if signal_handler.interface else  ""
+                path = "path='%s'" % signal_handler.path if signal_handler.path else  ""
+
+                signature = ','.join([string for string in [member, interface, path] if string])
+
+                self.call_method(_tdbus.DBUS_PATH_DBUS, MEMBER_ADDMATCH, _tdbus.DBUS_INTERFACE_DBUS,
+                                             format="s", args=[signature],
+                                             destination=_tdbus.DBUS_SERVICE_DBUS, timeout=1)
+
 
     def send_method_return(self, message, format=None, args=None):
         """Send a method call return."""
@@ -146,3 +167,6 @@ class DBusConnection(object):
                 timeout = int(1000 * timeout)
             deferred = self._connection.send_with_reply(message, timeout)
             deferred.set_notify(callback)
+
+    def _split_member(self, member):
+        return member.rsplit(".", 1)

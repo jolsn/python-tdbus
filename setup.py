@@ -12,10 +12,10 @@ from setuptools import setup, Extension
 
 version_info = {
     'name': 'python-tdbus',
-    'version': '0.8',
+    'version': '0.9',
     'description': 'A Python interface to D-BUS',
-    'author': 'Geert Jansen',
-    'author_email': 'geertj@gmail.com',
+    'author': 'Geert Jansen, Hmvp',
+    'author_email': 'geertj@gmail.com, hiram.van.paassen@mastervolt.com',
     'url': 'https://github.com/geertj/python-tdbus',
     'license': 'MIT',
     'classifiers': [

@@ -26,8 +26,8 @@ handler = SignalHandler()
 
 conn.add_handler(handler)
 
-# the next method needs to be called explicitly
-handler.subscribe_to_signals()
+# the next method needs to be called explicitly after all add_handler calls
+conn.subscribe_to_signals()
 
 
 print 'Listening for signals. Press CTRL-c to quit.'

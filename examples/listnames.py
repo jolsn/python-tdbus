@@ -11,9 +11,10 @@
 # This example shows how to do a blocking method call. We call the bus function
 # ListNames to list all bus names.
 
-from tdbus import DBUS_BUS_SESSION, SimpleDBusConnection
+from tdbus import SimpleDBusConnection
+import tdbus
 
-conn = SimpleDBusConnection(DBUS_BUS_SESSION)
+conn = SimpleDBusConnection(tdbus.DBUS_BUS_SESSION)
 
 print 'Listing all well-known services on the system bus:'
 print

@@ -1,10 +1,11 @@
-#
-# This file is part of python-tdbus. Python-tdbus is free software
-# available under the terms of the MIT license. See the file "LICENSE" that
-# was provided together with this source file for the licensing terms.
-#
-# Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
-# complete list.
+""""
+This file is part of python-tdbus. Python-tdbus is free software
+available under the terms of the MIT license. See the file "LICENSE" that
+was provided together with this source file for the licensing terms.
+
+Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
+complete list.
+"""
 
 import sys
 import logging
@@ -12,8 +13,6 @@ import fnmatch
 import traceback
 
 from tdbus import _tdbus, DBusError
-
-MEMBER_ADDMATCH = "AddMatch"
 
 
 def method(path=None, member=None, interface=None):
@@ -52,18 +51,17 @@ class DBusHandler(object):
             elif getattr(handler, 'signal_handler', False):
                 self.signal_handlers[handler.member] = handler
 
-    def _get_connection(self):
+    @property
+    def connection(self):
         return self.local.connection
 
-    connection = property(_get_connection)
-
-    def _get_message(self):
+    @property
+    def message(self):
         return self.local.message
-
-    message = property(_get_message)
 
     def set_response(self, format, args):
         """Used by method call handlers to set the response arguments."""
+        self.logger.debug("Returning: (%s, %s)", format, args)
         self.local.response = (format, args)
 
     def dispatch(self, connection, message):
@@ -113,21 +111,3 @@ class DBusHandler(object):
                     self.logger.error(line)
         else:
             return False
-
-    def subscribe_to_signals(self):
-        """
-        Call this to register all signal handlers with dbus.
-
-        The result of this is that signals will be delivered even if they are not explicitly sent to this client
-        """
-        # subscribe to signal handlers
-        for handler in self.signal_handlers.values():
-            member = "member='%s'" % handler.member if handler.member else  ""
-            interface = "interface='%s'" % handler.interface if handler.interface else  ""
-            path = "path='%s'" % handler.path if handler.path else  ""
-
-            signature = ','.join([string for string in [member, interface, path] if string])
-
-            self.connection.call_method(_tdbus.DBUS_PATH_DBUS, MEMBER_ADDMATCH, _tdbus.DBUS_INTERFACE_DBUS,
-                                         format="s", args=[signature],
-                                         destination=_tdbus.DBUS_SERVICE_DBUS, timeout=1)

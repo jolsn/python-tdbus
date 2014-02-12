@@ -15,6 +15,8 @@ from tdbus.test.base import BaseTest
 import unittest
 from tdbus.handler import signal_handler
 import gevent
+import time
+import logging
 
 
 IFACE_EXAMPLE = 'com.example'
@@ -22,9 +24,10 @@ IFACE_EXAMPLE = 'com.example'
 
 class MessageTest(BaseTest):
 
-    @classmethod
-    def echo(cls, signature, _):
-        raise NotImplementedError
+    def echo(self, signature=None, args=None):
+        reply = self.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
+                                       destination=self.server_name, timeout=10)
+        return reply.get_args()
 
     def test_arg_byte(self):
         assert self.echo('y', (0,)) == (0,)
@@ -218,18 +221,22 @@ class MessageTest(BaseTest):
             self.echo('ay', ([1, 2, 3],))
 
 class EchoHandler(DBusHandler):
+    def __init__(self, signal_handler=None):
+        super(EchoHandler, self).__init__()
+        self.signal_handler = signal_handler
 
-    @method(interface=IFACE_EXAMPLE)
-    def Echo(self, message):
+    @method(interface=IFACE_EXAMPLE, member="Echo")
+    def echo_method(self, message):
         self.set_response(message.get_signature(), message.get_args())
 
     @signal_handler(interface=IFACE_EXAMPLE, member="Echo")
     def echo_signal(self, message):
-        self.connection.send_signal()
+        if self.signal_handler:
+            self.signal_handler(message)
 
 
-    @method(interface=IFACE_EXAMPLE)
-    def Stop(self, *args):
+    @method(interface=IFACE_EXAMPLE, member="Stop")
+    def stop(self, _):
         self.connection.stop()
 
 
@@ -256,12 +263,6 @@ class TestMessageSimple(unittest.TestCase, MessageTest):
         cls.server.join()
         super(TestMessageSimple, cls).tearDownClass()
 
-    @classmethod
-    def echo(cls, signature=None, args=None):
-        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
-                                       destination=cls.server_name, timeout=10)
-        return reply.get_args()
-
 
 class TestMessageGEvent(unittest.TestCase, MessageTest):
 
@@ -273,12 +274,6 @@ class TestMessageGEvent(unittest.TestCase, MessageTest):
         conn.add_handler(handler)
         cls.server_name = conn.get_unique_name()
         cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
-
-    @classmethod
-    def echo(cls, signature=None, args=None):
-        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
-                                       destination=cls.server_name, timeout=10)
-        return reply.get_args()
 
 
 class TestMessageName(unittest.TestCase, MessageTest):
@@ -293,9 +288,54 @@ class TestMessageName(unittest.TestCase, MessageTest):
         conn.add_handler(handler)
         cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
 
-    @classmethod
-    def echo(cls, signature=None, args=None):
-        reply = cls.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
-                                       destination=cls.server_name, timeout=10)
-        return reply.get_args()
+class TestMessageSignal(unittest.TestCase, MessageTest):
 
+    last_message = None
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMessageSignal, cls).setUpClass()
+        cls.server_name = "org.tdbus.Test"
+
+        def signal_handler_f(message):
+            logging.getLogger('tdbus').info(message)
+            cls.last_message = message
+
+        handler = EchoHandler(signal_handler_f)
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
+        conn.register_name(cls.server_name)
+        conn.add_handler(handler)
+        cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
+
+    def echo(self, signature=None, args=None):
+        self.client.send_signal('/', 'Echo', IFACE_EXAMPLE, signature, args,
+                                       destination=self.server_name)
+
+        # Wait a sec to server can process the message
+        gevent.sleep(0.01)
+        return self.last_message.get_args()
+
+class TestMessageSignalMatched(unittest.TestCase, MessageTest):
+
+    last_message = None
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMessageSignalMatched, cls).setUpClass()
+
+        def signal_handler_f(message):
+            logging.getLogger('tdbus').info(message)
+            cls.last_message = message
+
+        handler = EchoHandler(signal_handler_f)
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
+        conn.add_handler(handler)
+        conn.subscribe_to_signals()
+        cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
+
+    def echo(self, signature=None, args=None):
+        self.client.send_signal('/', 'Echo', IFACE_EXAMPLE, signature, args)
+
+        # Wait a sec to server can process the message
+        gevent.sleep(0.01)
+        return self.last_message.get_args()
