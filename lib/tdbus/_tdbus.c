@@ -33,7 +33,7 @@
 
 #define RETURN_DBUS_ERROR(err) \
     do { \
-        if (dbus_error_is_set(&err)) RETURN_ERROR(err.message); \
+        if (dbus_error_is_set(&err)) RETURN_ERROR("%s", err.message); \
         else RETURN_ERROR("unknown error"); \
     } while (0)
 
