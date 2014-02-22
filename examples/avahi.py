@@ -10,14 +10,17 @@
 # This example shows how to access Avahi on the D-BUS.
 
 
-from tdbus import SimpleDBusConnection, DBUS_BUS_SESSION, DBusHandler, signal_handler, DBusError
+from tdbus import SimpleDBusConnection, DBUS_BUS_SYSTEM, DBusHandler, signal_handler, DBusError
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 CONN_AVAHI = 'org.freedesktop.Avahi'
 PATH_SERVER = '/'
 IFACE_SERVER = 'org.freedesktop.Avahi.Server'
 
-conn = SimpleDBusConnection(DBUS_BUS_SESSION)
-
+conn = SimpleDBusConnection(DBUS_BUS_SYSTEM)
 
 try:
     result = conn.call_method(PATH_SERVER, 'GetVersionString',
@@ -27,7 +30,7 @@ except DBusError:
     raise
 
 print 'Avahi is available at %s' % CONN_AVAHI
-print 'Avahi version: %s' % result[0]
+print 'Avahi version: %s' % result.get_args()[0]
 print
 print 'Browsing service types on domain: local'
 print 'Press CTRL-c to exit'
@@ -35,7 +38,7 @@ print
 
 result = conn.call_method('/', 'ServiceTypeBrowserNew', interface=IFACE_SERVER,
                     destination=CONN_AVAHI, format='iisu', args=(-1, 0, 'local', 0))
-browser = result[0]
+browser = result.get_args()[0]
 print browser
 class AvahiHandler(DBusHandler):
 
@@ -44,5 +47,5 @@ class AvahiHandler(DBusHandler):
 	args = message.get_args()
     	print 'service %s exists on domain %s' % (args[2], args[3])
 
-conn.add_handler(AvahiHandler)
+conn.add_handler(AvahiHandler())
 conn.dispatch()
