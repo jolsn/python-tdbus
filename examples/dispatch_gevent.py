@@ -14,12 +14,14 @@
 
 import sys
 import tdbus
-from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, signal_handler, DBusHandler, method
+
 import gevent
 
 if not hasattr(tdbus, 'GEventDBusConnection'):
     print 'gevent is not available on this system'
     sys.exit(1)
+
+from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, signal_handler, DBusHandler, method
 
 
 class GEventHandler(DBusHandler):

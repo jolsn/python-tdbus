@@ -9,6 +9,10 @@
 from __future__ import division, absolute_import
 
 import gevent
+
+if not hasattr(gevent, 'wait'):
+    raise ImportError("Must use gevent 1.0 or greater")
+
 from gevent import core, local
 from gevent.hub import get_hub, Waiter
 
