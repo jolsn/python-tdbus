@@ -64,26 +64,26 @@ class GEventLoop(EventLoop):
 
     def add_timeout(self, timeout):
         interval = timeout.get_interval()
-        event = get_hub().loop.timer(interval/1000, interval/1000)
+        event = get_hub().loop.timer(interval / 1000, interval / 1000)
         if timeout.get_enabled():
             event.start(self._handle_timeout, timeout)
         # Currently (June 2012) gevent does not support reading or changing
         # the interval of a timer. Libdbus however expects it an change the
         # interval, so we store it separately outside the event.
-        timeout.set_data((interval,event))
+        timeout.set_data((interval, event))
 
     def remove_timeout(self, timeout):
-        interval,event = timeout.get_data()
+        interval, event = timeout.get_data()
         event.stop()
         timeout.set_data(None)
 
     def timeout_toggled(self, timeout):
-        interval,event = timeout.get_data()
+        interval, event = timeout.get_data()
         if timeout.get_enabled():
             if interval != timeout.get_interval():
                 # Change interval => create new timer
                 event.stop()
-                event = get_hub().loop.timer(interval/1000, interval/1000)
+                event = get_hub().loop.timer(interval / 1000, interval / 1000)
                 timeout.set_data(event)
             event.start(self._handle_timeout, timeout)
         else:

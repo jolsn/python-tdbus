@@ -30,7 +30,7 @@ version_info = {
 
 def pkgconfig(*args):
     """Run pkg-config."""
-    output = subprocess.check_output(['pkg-config'] + list(args))
+    output = subprocess.check_output(['pkg-config'] + list(args), universal_newlines=True)
     return output.strip().split() + ['-O0']
 
 

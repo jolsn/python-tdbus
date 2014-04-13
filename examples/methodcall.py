@@ -9,6 +9,9 @@
 
 # This example shows how to handle a method call.
 
+from __future__ import print_function, unicode_literals
+from __future__ import division, absolute_import
+
 from tdbus import DBusHandler, method, SimpleDBusConnection, DBUS_BUS_SESSION
 import tdbus
 
@@ -18,7 +21,7 @@ class MethodHandler(DBusHandler):
     @method(interface="com.example.Hello", path="/com/example/TDBus", member="Hello")
     def hello(self, message):
         hello = 'Hello world!'
-        print 'receive a Hello request, responding with "{}"'.format(hello)
+        print('receive a Hello request, responding with "{}"'.format(hello))
         self.set_response('s', (hello,))
 
 
@@ -51,15 +54,16 @@ conn.register_name(EXAMPLE_NAME)
 handler = MethodHandler()
 conn.add_handler(handler)
 
-print 'Exposing a hello world method on the bus.'
-print 'In another terminal, issue:'
-print
-print '  $ dbus-send --session --print-reply --type=method_call --dest={} /com/example/TDBus com.example.Hello.Hello'.format(conn.get_unique_name())
-print
-print 'or'
-print
-print '  $ dbus-send --session --print-reply --type=method_call --dest={} /com/example/TDBus com.example.Hello.Hello'.format(EXAMPLE_NAME)
-print
-print 'Press CTRL-c to exit.'
-print
+print('Exposing a hello world method on the bus.')
+print('In another terminal, issue:')
+print()
+print('  $ dbus-send --session --print-reply --type=method_call --dest={} /com/example/TDBus com.example.Hello.Hello'.format(conn.get_unique_name()))
+print()
+print('or')
+print()
+print('  $ dbus-send --session --print-reply --type=method_call --dest={} /com/example/TDBus com.example.Hello.Hello'.format(EXAMPLE_NAME))
+print()
+print('Press CTRL-c to exit.')
+print()
+
 conn.dispatch()

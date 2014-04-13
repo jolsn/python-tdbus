@@ -139,6 +139,9 @@ class MessageTest(BaseTest):
     def test_arg_object_path(self):
         assert self.echo('o', ('/foo/bar',)) == ('/foo/bar',)
 
+    def test_arg_object_path_unicode(self):
+        assert self.echo('o', (u'/foo/bar',)) == (u'/foo/bar',)
+
     def test_arg_invalid_object_path(self):
         with self.assertRaises(DBusError):
             self.echo('o', ('foo',))
@@ -149,6 +152,9 @@ class MessageTest(BaseTest):
 
     def test_arg_signature(self):
         assert self.echo('g', ('iii',)) == ('iii',)
+
+    def test_arg_signature_unicode(self):
+        assert self.echo('g', (u'iii',)) == (u'iii',)
 
     def test_arg_invalid_signature(self):
         with self.assertRaises(DBusError):
@@ -169,6 +175,11 @@ class MessageTest(BaseTest):
     def test_arg_variant(self):
         assert self.echo('v', (('i', 10),)) == (('i', 10),)
         assert self.echo('v', (('ai', [1, 2, 3]),)) == (('ai', [1, 2, 3]),)
+
+    def test_arg_variant_unicode(self):
+        assert self.echo('v', ((u'i', 10),)) == ((u'i', 10),)
+        assert self.echo('v', ((u'ai', [1, 2, 3]),)) == ((u'ai', [1, 2, 3]),)
+
 
     def test_arg_invalid_variant(self):
         with self.assertRaises(DBusError):
