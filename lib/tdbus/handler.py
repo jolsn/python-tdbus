@@ -7,10 +7,8 @@ Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
 complete list.
 """
 
-import sys
 import logging
 import fnmatch
-import traceback
 
 from tdbus import _tdbus, DBusError
 
@@ -82,14 +80,13 @@ class DBusHandler(object):
             if handler.path and not fnmatch.fnmatch(message.get_path(), handler.path):
                 return False
             try:
-                ret = handler(message)
+                self.logger.info("calling method for '%s'", member)
+                handler(message)
             except DBusError as e:
                 self.connection.send_error(message, e[0])
             except Exception as e:
-                lines = ['Uncaught exception in method call']
-                lines += traceback.format_exception(*sys.exc_info())
-                for line in lines:
-                    self.logger.error(line)
+                self.logger.error('Uncaught exception in method call: %s', e.__name__)
+                self.logger.exception(e)
                 self.connection.send_error(message, 'net.tdbus.UncaughtException', format="s", args=[str(e)])
             else:
                 fmt, args = self.local.response
@@ -103,11 +100,10 @@ class DBusHandler(object):
             if handler.path and not fnmatch.fnmatch(message.get_path(), handler.path):
                 return False
             try:
-                ret = handler(message)
+                self.logger.info("calling signal handler for '%s'", member)
+                handler(message)
             except Exception as e:
-                lines = ['Uncaught exception in signal handler']
-                lines += traceback.format_exception(*sys.exc_info())
-                for line in lines:
-                    self.logger.error(line)
+                self.logger.error('Uncaught exception in signal handler:')
+                self.logger.exception(e)
         else:
             return False
