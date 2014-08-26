@@ -6,17 +6,17 @@
 # Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
 # complete list.
 
+import logging
 import math
 from threading import Thread
+import unittest
+
+import gevent
 
 from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, DBusError, \
     SimpleDBusConnection, method, DBusHandler
-from tdbus.test.base import BaseTest
-import unittest
 from tdbus.handler import signal_handler
-import gevent
-import time
-import logging
+from tdbus.test.base import BaseTest
 
 
 IFACE_EXAMPLE = 'com.example'
@@ -106,10 +106,17 @@ class MessageTest(BaseTest):
             self.echo('t', (0x10000000000000000,))
 
     def test_arg_boolean(self):
-        assert self.echo('y', (False,)) == (False,)
-        assert self.echo('y', (True,)) == (True,)
-        assert self.echo('y', (0,)) == (False,)
-        assert self.echo('y', (1,)) == (True,)
+        assert self.echo('b', (False,)) == (False,)
+        assert self.echo('b', (True,)) == (True,)
+        assert self.echo('b', (0,)) == (False,)
+        assert self.echo('b', (1,)) == (True,)
+        assert self.echo('b', ([],)) == (False,)
+        assert self.echo('b', ([1],)) == (True,)
+        assert self.echo('b', ({},)) == (False,)
+        assert self.echo('b', ({"": ""},)) == (True,)
+        assert self.echo('b', ((),)) == (False,)
+        assert self.echo('b', ((1),)) == (True,)
+        assert self.echo('b', (None,)) == (False,)
 
     def test_arg_double(self):
         assert self.echo('d', (-1e100,)) == (-1e100,)
@@ -220,6 +227,7 @@ class MessageTest(BaseTest):
         with self.assertRaises(DBusError):
             self.echo('ay', ([1, 2, 3],))
 
+
 class EchoHandler(DBusHandler):
     def __init__(self, signal_handler=None):
         super(EchoHandler, self).__init__()
@@ -233,7 +241,6 @@ class EchoHandler(DBusHandler):
     def echo_signal(self, message):
         if self.signal_handler:
             self.signal_handler(message)
-
 
     @method(interface=IFACE_EXAMPLE, member="Stop")
     def stop(self, _):
@@ -288,6 +295,7 @@ class TestMessageName(unittest.TestCase, MessageTest):
         conn.add_handler(handler)
         cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
 
+
 class TestMessageSignal(unittest.TestCase, MessageTest):
 
     last_message = None
@@ -314,6 +322,7 @@ class TestMessageSignal(unittest.TestCase, MessageTest):
         # Wait a sec to server can process the message
         gevent.sleep(0.01)
         return self.last_message.get_args()
+
 
 class TestMessageSignalMatched(unittest.TestCase, MessageTest):
 
