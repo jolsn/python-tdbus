@@ -1849,7 +1849,7 @@ void init_tdbus(void) {
 
     #define EXPORT_STRING_SYMBOL(name) \
         do { \
-            if ((Pstr = PyString_FromString(#name)) == NULL) return; \
+            if ((Pstr = PyString_FromString(name)) == NULL) return; \
             PyDict_SetItemString(Pdict, #name, Pstr); \
             Py_DECREF(Pstr); \
         } while (0)
