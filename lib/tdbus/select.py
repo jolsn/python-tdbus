@@ -8,14 +8,14 @@
 
 from __future__ import division, absolute_import
 
-import time
-import select
-import heapq
 import errno
+import heapq
+import select
+import time
 
 from tdbus import _tdbus
-from tdbus.loop import EventLoop
 from tdbus.connection import DBusConnection, DBusError
+from tdbus.loop import EventLoop
 
 
 class SelectLoop(EventLoop):
@@ -45,7 +45,7 @@ class SelectLoop(EventLoop):
         pass
 
     def add_timeout(self, timeout):
-        expires = time.time() + timeout.get_interval()/1000
+        expires = time.time() + timeout.get_interval() / 1000
         heapq.heappush(self.timeouts, (expires, timeout))
 
     def remove_timeout(self, timeout):
@@ -84,8 +84,7 @@ class SimpleDBusConnection(DBusConnection):
         self.dispatch()
         assert len(replies) == 1
         reply = replies[0]
-        if reply.get_type() == _tdbus.DBUS_MESSAGE_TYPE_ERROR:
-            raise DBusError(reply.get_error_name())
+        self._handle_errors(reply)
         return reply
 
     def dispatch(self):
@@ -127,8 +126,8 @@ class SimpleDBusConnection(DBusConnection):
             while loop.timeouts and loop.timeouts[0][0] < now:
                 expires, timeout = heapq.heappop(loop.timeouts)
                 timeout.handle()
-                heapq.heappush(loop.timeouts, (expires + timeout.get_interval()/1000))
-            while self._connection.get_dispatch_status() ==  \
+                heapq.heappush(loop.timeouts, (expires + timeout.get_interval() / 1000))
+            while self._connection.get_dispatch_status() == \
                         _tdbus.DBUS_DISPATCH_DATA_REMAINS:
                 self._connection.dispatch()
         self._connection.flush()

@@ -7,8 +7,8 @@ Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
 complete list.
 """
 
-import logging
 import fnmatch
+import logging
 
 from tdbus import _tdbus, DBusError
 
@@ -85,9 +85,10 @@ class DBusHandler(object):
             except DBusError as e:
                 self.connection.send_error(message, e[0])
             except Exception as e:
-                self.logger.error('Uncaught exception in method call: %s', e.__name__)
+                self.logger.error('Uncaught exception in method call: %s', e)
                 self.logger.exception(e)
-                self.connection.send_error(message, 'net.tdbus.UncaughtException', format="s", args=[str(e)])
+                self.connection.send_error(message, 'net.tdbus.UncaughtException.' + e.__class__.__name__,
+                                           format="s", args=[str(e)])
             else:
                 fmt, args = self.local.response
                 self.connection.send_method_return(message, fmt, args)
