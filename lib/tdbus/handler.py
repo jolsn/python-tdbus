@@ -82,8 +82,6 @@ class DBusHandler(object):
             try:
                 self.logger.info("calling method for '%s'", member)
                 handler(message)
-            except DBusError as e:
-                self.connection.send_error(message, e[0])
             except Exception as e:
                 self.logger.error('Uncaught exception in method call: %s', e)
                 self.logger.exception(e)
