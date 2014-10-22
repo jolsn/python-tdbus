@@ -8,17 +8,17 @@
 
 from __future__ import division, absolute_import
 
-import gevent
-
-if not hasattr(gevent, 'wait'):
-    raise ImportError("Must use gevent 1.0 or greater")
-
 from gevent import core, local
+import gevent
 from gevent.hub import get_hub, Waiter
 
 from tdbus import _tdbus
-from tdbus.loop import EventLoop
 from tdbus.connection import DBusConnection, DBusError
+from tdbus.loop import EventLoop
+
+
+if not hasattr(gevent, 'wait'):
+    raise ImportError("Must use gevent 1.0 or greater")
 
 
 class GEventLoop(EventLoop):
@@ -115,8 +115,7 @@ class GEventDBusConnection(DBusConnection):
         kwargs['callback'] = _gevent_callback
         super(GEventDBusConnection, self).call_method(*args, **kwargs)
         reply = waiter.get()
-        if reply.get_type() == _tdbus.DBUS_MESSAGE_TYPE_ERROR:
-            raise DBusError(reply.get_error_name())
+        self._handle_errors(reply)
         return reply
 
     def spawn(self, handler, *args):

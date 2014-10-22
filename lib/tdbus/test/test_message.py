@@ -6,17 +6,20 @@
 # Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
 # complete list.
 
+import logging
 import math
 from threading import Thread
+import unittest
+
+import gevent
 
 from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, DBusError, \
     SimpleDBusConnection, method, DBusHandler
-from tdbus.test.base import BaseTest
-import unittest
 from tdbus.handler import signal_handler
-import gevent
-import time
-import logging
+from tdbus.test.base import BaseTest
+
+
+logging.basicConfig()
 
 
 IFACE_EXAMPLE = 'com.example'
@@ -26,8 +29,17 @@ class MessageTest(BaseTest):
 
     def echo(self, signature=None, args=None):
         reply = self.client.call_method('/', 'Echo', IFACE_EXAMPLE, signature, args,
-                                       destination=self.server_name, timeout=10)
+                                        destination=self.server_name, timeout=10)
         return reply.get_args()
+
+    def echo_exception(self, signature=None, args=None):
+        try:
+            self.client.call_method('/', 'EchoException', IFACE_EXAMPLE, signature, args,
+                                    destination=self.server_name, timeout=10)
+        except DBusError as e:
+            return e
+        else:
+            raise ValueError("Should have gotten an DbusError")
 
     def test_arg_byte(self):
         assert self.echo('y', (0,)) == (0,)
@@ -106,10 +118,17 @@ class MessageTest(BaseTest):
             self.echo('t', (0x10000000000000000,))
 
     def test_arg_boolean(self):
-        assert self.echo('y', (False,)) == (False,)
-        assert self.echo('y', (True,)) == (True,)
-        assert self.echo('y', (0,)) == (False,)
-        assert self.echo('y', (1,)) == (True,)
+        assert self.echo('b', (False,)) == (False,)
+        assert self.echo('b', (True,)) == (True,)
+        assert self.echo('b', (0,)) == (False,)
+        assert self.echo('b', (1,)) == (True,)
+        assert self.echo('b', ([],)) == (False,)
+        assert self.echo('b', ([1],)) == (True,)
+        assert self.echo('b', ({},)) == (False,)
+        assert self.echo('b', ({"": ""},)) == (True,)
+        assert self.echo('b', ((),)) == (False,)
+        assert self.echo('b', ((1),)) == (True,)
+        assert self.echo('b', (None,)) == (False,)
 
     def test_arg_double(self):
         assert self.echo('d', (-1e100,)) == (-1e100,)
@@ -231,6 +250,20 @@ class MessageTest(BaseTest):
         with self.assertRaises(DBusError):
             self.echo('ay', ([1, 2, 3],))
 
+    def test_exceptions(self):
+        error = self.echo_exception('ss', ['SpecialException', 'message'])
+        self.assertEquals(error.__class__.__name__, 'SpecialException')
+        self.assertEquals(error.type, 'SpecialException')
+        self.assertEquals(error.message, 'message')
+        assert isinstance(error, DBusError)
+
+        error = self.echo_exception('s', ['Missing second argument, which raises an ValueError'])
+        self.assertEquals(error.__class__.__name__, 'ValueError')
+        self.assertEquals(error.type, 'ValueError')
+        self.assertEquals(error.message, 'need more than 1 value to unpack')
+        assert isinstance(error, DBusError)
+
+
 class EchoHandler(DBusHandler):
     def __init__(self, signal_handler=None):
         super(EchoHandler, self).__init__()
@@ -240,11 +273,16 @@ class EchoHandler(DBusHandler):
     def echo_method(self, message):
         self.set_response(message.get_signature(), message.get_args())
 
+    @method(interface=IFACE_EXAMPLE, member="EchoException")
+    def echo_exception(self, message):
+        name, message = message.get_args()
+
+        raise type(str(name), (Exception,), {})(message)
+
     @signal_handler(interface=IFACE_EXAMPLE, member="Echo")
     def echo_signal(self, message):
         if self.signal_handler:
             self.signal_handler(message)
-
 
     @method(interface=IFACE_EXAMPLE, member="Stop")
     def stop(self, _):
@@ -299,6 +337,7 @@ class TestMessageName(unittest.TestCase, MessageTest):
         conn.add_handler(handler)
         cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
 
+
 class TestMessageSignal(unittest.TestCase, MessageTest):
 
     last_message = None
@@ -326,6 +365,7 @@ class TestMessageSignal(unittest.TestCase, MessageTest):
         gevent.sleep(0.01)
         return self.last_message.get_args()
 
+
 class TestMessageSignalMatched(unittest.TestCase, MessageTest):
 
     last_message = None
@@ -333,6 +373,7 @@ class TestMessageSignalMatched(unittest.TestCase, MessageTest):
     @classmethod
     def setUpClass(cls):
         super(TestMessageSignalMatched, cls).setUpClass()
+        cls.server_name = "org.tdbus.Test"
 
         def signal_handler_f(message):
             logging.getLogger('tdbus').info(message)

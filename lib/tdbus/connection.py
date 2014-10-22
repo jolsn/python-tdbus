@@ -6,10 +6,12 @@
 # Copyright (c) 2012 the python-tdbus authors. See the file "AUTHORS" for a
 # complete list.
 
-import sys
 import logging
+import sys
 import traceback
+
 from tdbus import _tdbus
+
 
 DBusError = _tdbus.Error
 
@@ -167,6 +169,23 @@ class DBusConnection(object):
                 timeout = int(1000 * timeout)
             deferred = self._connection.send_with_reply(message, timeout)
             deferred.set_notify(callback)
+
+    def _handle_errors(self, reply):
+        if reply.get_type() == _tdbus.DBUS_MESSAGE_TYPE_ERROR:
+            name = reply.get_error_name()
+            args = reply.get_args()
+
+            # strip our own prefix, was only needed to provide a valid dbus error name
+            if name.startswith('net.tdbus.UncaughtException'):
+                name = name[28:]
+
+            # A string as first argument is optional in dbus error replies.
+            # When present is should be an error message
+            if args:
+                raise type(str(name), (DBusError,), {'type': name})(args[0])
+            else:
+                raise type(str(name), (DBusError,), {'type': name})()
+
 
     def _split_member(self, member):
         return member.rsplit(".", 1)
