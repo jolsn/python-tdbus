@@ -682,7 +682,11 @@ _tdbus_message_read_arg(DBusMessageIter *iter, int depth)
         dbus_message_iter_recurse(iter, &subiter);
         if (subtype == DBUS_TYPE_BYTE) {
             dbus_message_iter_get_fixed_array(&subiter, &ptr, &size);
+#if PY_MAJOR_VERSION < 3
             Parg = PyString_FromStringAndSize(ptr, size);
+#else
+            Parg = PyBytes_FromStringAndSize(ptr, size);
+#endif
             CHECK_PYTHON_ERROR(Parg == NULL);
         } else {
             if (subtype == DBUS_TYPE_DICT_ENTRY)

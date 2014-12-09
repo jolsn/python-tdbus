@@ -244,7 +244,7 @@ class MessageTest(BaseTest):
         assert self.echo('a{ii}', ({1: 10},)) == ({1: 10},)
 
     def test_arg_byte_array(self):
-        assert self.echo('ay', ('foo',)) == ('foo',)
+        assert self.echo('ay', (b'foo',)) == (b'foo',)
 
     def test_arg_byte_array_illegal_type(self):
         with self.assertRaises(DBusError):
@@ -252,15 +252,16 @@ class MessageTest(BaseTest):
 
     def test_exceptions(self):
         error = self.echo_exception('ss', ['SpecialException', 'message'])
+        print(error, type(error))
         self.assertEquals(error.__class__.__name__, 'SpecialException')
         self.assertEquals(error.type, 'SpecialException')
-        self.assertEquals(error.message, 'message')
+        self.assertEquals(error.args, ('message',))
         assert isinstance(error, DBusError)
 
         error = self.echo_exception('s', ['Missing second argument, which raises an ValueError'])
         self.assertEquals(error.__class__.__name__, 'ValueError')
         self.assertEquals(error.type, 'ValueError')
-        self.assertEquals(error.message, 'need more than 1 value to unpack')
+        self.assertEquals(error.args, ('need more than 1 value to unpack',))
         assert isinstance(error, DBusError)
 
 
