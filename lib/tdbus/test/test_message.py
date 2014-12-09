@@ -15,7 +15,7 @@ import gevent
 
 from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, DBusError, \
     SimpleDBusConnection, method, DBusHandler
-from tdbus.handler import signal_handler
+from tdbus.handler import signal_handler, dbus_object
 from tdbus.test.base import BaseTest
 
 
@@ -265,9 +265,9 @@ class MessageTest(BaseTest):
         assert isinstance(error, DBusError)
 
 
-class EchoHandler(DBusHandler):
+class EchoHandlerBase(object):
     def __init__(self, signal_handler=None):
-        super(EchoHandler, self).__init__()
+        super(EchoHandlerBase, self).__init__()
         self.signal_handler = signal_handler
 
     @method(interface=IFACE_EXAMPLE, member="Echo")
@@ -290,7 +290,16 @@ class EchoHandler(DBusHandler):
         self.connection.stop()
 
 
-class TestMessageSimple(unittest.TestCase, MessageTest):
+class EchoHandlerInherit(EchoHandlerBase, DBusHandler):
+    pass
+
+
+@dbus_object
+class EchoHandlerDecorator(EchoHandlerBase):
+    pass
+
+
+class TestMessageASimple(unittest.TestCase, MessageTest):
 
     @classmethod
     def dbus_server(cls, conn):
@@ -298,8 +307,8 @@ class TestMessageSimple(unittest.TestCase, MessageTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestMessageSimple, cls).setUpClass()
-        handler = EchoHandler()
+        super(TestMessageASimple, cls).setUpClass()
+        handler = EchoHandlerInherit()
         conn = SimpleDBusConnection(DBUS_BUS_SESSION)
         conn.add_handler(handler)
         cls.server_name = conn.get_unique_name()
@@ -311,7 +320,7 @@ class TestMessageSimple(unittest.TestCase, MessageTest):
     def tearDownClass(cls):
         cls.client.call_method('/', 'Stop', IFACE_EXAMPLE, destination=cls.server_name)
         cls.server.join()
-        super(TestMessageSimple, cls).tearDownClass()
+        super(TestMessageASimple, cls).tearDownClass()
 
 
 class TestMessageGEvent(unittest.TestCase, MessageTest):
@@ -319,7 +328,19 @@ class TestMessageGEvent(unittest.TestCase, MessageTest):
     @classmethod
     def setUpClass(cls):
         super(TestMessageGEvent, cls).setUpClass()
-        handler = EchoHandler()
+        handler = EchoHandlerInherit()
+        conn = GEventDBusConnection(DBUS_BUS_SESSION)
+        conn.add_handler(handler)
+        cls.server_name = conn.get_unique_name()
+        cls.client = GEventDBusConnection(DBUS_BUS_SESSION)
+
+
+class TestMessageDecorated(unittest.TestCase, MessageTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMessageDecorated, cls).setUpClass()
+        handler = EchoHandlerDecorator()
         conn = GEventDBusConnection(DBUS_BUS_SESSION)
         conn.add_handler(handler)
         cls.server_name = conn.get_unique_name()
@@ -332,7 +353,7 @@ class TestMessageName(unittest.TestCase, MessageTest):
     def setUpClass(cls):
         super(TestMessageName, cls).setUpClass()
         cls.server_name = "org.tdbus.Test"
-        handler = EchoHandler()
+        handler = EchoHandlerInherit()
         conn = GEventDBusConnection(DBUS_BUS_SESSION)
         conn.register_name(cls.server_name)
         conn.add_handler(handler)
@@ -352,7 +373,7 @@ class TestMessageSignal(unittest.TestCase, MessageTest):
             logging.getLogger('tdbus').info(message)
             cls.last_message = message
 
-        handler = EchoHandler(signal_handler_f)
+        handler = EchoHandlerInherit(signal_handler_f)
         conn = GEventDBusConnection(DBUS_BUS_SESSION)
         conn.register_name(cls.server_name)
         conn.add_handler(handler)
@@ -363,7 +384,7 @@ class TestMessageSignal(unittest.TestCase, MessageTest):
                                        destination=self.server_name)
 
         # Wait a sec to server can process the message
-        gevent.sleep(0.01)
+        gevent.sleep(0.1)
         return self.last_message.get_args()
 
 
@@ -380,7 +401,7 @@ class TestMessageSignalMatched(unittest.TestCase, MessageTest):
             logging.getLogger('tdbus').info(message)
             cls.last_message = message
 
-        handler = EchoHandler(signal_handler_f)
+        handler = EchoHandlerInherit(signal_handler_f)
         conn = GEventDBusConnection(DBUS_BUS_SESSION)
         conn.add_handler(handler)
         conn.subscribe_to_signals()

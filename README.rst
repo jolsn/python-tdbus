@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.org/hmvp/python-tdbus.svg?branch=master
+    :target: https://travis-ci.org/hmvp/python-tdbus
+
 Overview
 ========
 

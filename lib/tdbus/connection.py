@@ -18,6 +18,11 @@ DBusError = _tdbus.Error
 MEMBER_REQUEST_NAME = "RequestName"
 MEMBER_ADDMATCH = "AddMatch"
 
+PATH_SEPARATOR = '/'
+
+def check_path(path):
+    if not path.startswith(PATH_SEPARATOR):
+        raise ValueError('Path should be absolute')
 
 class DBusConnection(object):
     """A connection to the D-BUS."""
@@ -32,11 +37,23 @@ class DBusConnection(object):
         self._connection.set_loop(self.Loop(self._connection))
         self._connection.add_filter(self._dispatch)
         self.handlers = []
+        self.objects = {}
         self.logger = logging.getLogger('tdbus')
 
     def add_handler(self, handler):
         """Add a new method/signal handler for this connection."""
         self.handlers.append(handler)
+
+    def add_object(self, path, dbus_object):
+        check_path(path)
+
+        self.objects[path] = dbus_object
+
+    def remove_handler(self, handler):
+        self.handlers = [x for x in self.handlers if x != handler]
+
+    def remove_object(self, path):
+        self.objects.pop(path, None)
 
     def open(self, address):
         self._connection.open(address)
@@ -134,6 +151,12 @@ class DBusConnection(object):
         it gets called on all incoming messages."""
         for handler in self.handlers:
             self.spawn(handler.dispatch, self, message)
+
+        #Dispatch objects
+        dbus_object = self.objects.get(message.get_path(), None)
+        if dbus_object:
+            self.spawn(dbus_object.dispatch, self, message, ignore_path)
+
         return True
 
     def spawn(self, handler, *args):
@@ -141,10 +164,8 @@ class DBusConnection(object):
         try:
             handler(*args)
         except Exception as e:
-            lines = ['Uncaught exception in method call']
-            lines += traceback.format_exception(*sys.exc_info())
-            for line in lines:
-                self.logger.error(line)
+            self.logger.error('Uncaught exception in method call')
+            self.logger.exception(e)
 
     def call_method(self, path, member, interface=None, format=None, args=None,
                     destination=None, callback=None, timeout=None):

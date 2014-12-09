@@ -22,6 +22,7 @@ def method(path=None, member=None, interface=None):
         return func
     return _decorate
 
+
 def signal_handler(path=None, member=None, interface=None):
     def _decorate(func):
         func.signal_handler = True
@@ -32,37 +33,38 @@ def signal_handler(path=None, member=None, interface=None):
     return _decorate
 
 
-class DBusHandler(object):
-    """Handler for method calls and signals."""
+def dbus_object(cls):
+    _init_handlers(cls)
+    return cls
 
-    def __init__(self):
-        self.methods = {}
-        self.signal_handlers = {}
-        self.logger = logging.getLogger('tdbus')
-        self._init_handlers()
 
-    def _init_handlers(self):
-        for name in vars(self.__class__):
-            handler = getattr(self, name)
-            if getattr(handler, 'method', False):
-                self.methods[handler.member] = handler
-            elif getattr(handler, 'signal_handler', False):
-                self.signal_handlers[handler.member] = handler
+def _connection(self):
+    return self.local.connection
 
-    @property
-    def connection(self):
-        return self.local.connection
 
-    @property
-    def message(self):
-        return self.local.message
+def _message(self):
+    return self.local.message
 
-    def set_response(self, format, args):
-        """Used by method call handlers to set the response arguments."""
-        self.logger.debug("Returning: (%s, %s)", format, args)
-        self.local.response = (format, args)
 
-    def dispatch(self, connection, message):
+def _set_response(self, format, args):
+    """Used by method call handlers to set the response arguments."""
+    self.logger.debug("Returning: (%s, %s)", format, args)
+    self.local.response = (format, args)
+
+
+def _init_handlers(cls):
+    methods = {}
+    signal_handlers = {}
+
+    for name in dir(cls):
+        handler = getattr(cls, name)
+
+        if getattr(handler, 'method', False):
+            methods[handler.member] = handler
+        elif getattr(handler, 'signal_handler', False):
+            signal_handlers[handler.member] = handler
+
+    def dispatch(self, connection, message, ignore_path=False):
         """Dispatch a message. Returns True if the message was dispatched."""
         if not hasattr(self, 'local'):
             self.local = connection.Local()
@@ -72,37 +74,53 @@ class DBusHandler(object):
         mtype = message.get_type()
         member = message.get_member()
         if mtype == _tdbus.DBUS_MESSAGE_TYPE_METHOD_CALL:
-            if member not in self.methods:
+            if member not in methods:
                 return False
-            handler = self.methods[member]
+            handler = methods[member]
             if handler.interface and handler.interface != message.get_interface():
                 return False
-            if handler.path and not fnmatch.fnmatch(message.get_path(), handler.path):
+            if (not ignore_path and
+                handler.path and not fnmatch.fnmatch(message.get_path(), handler.path)):
                 return False
             try:
                 self.logger.info("calling method for '%s'", member)
-                handler(message)
+                handler(self, message)
             except Exception as e:
                 self.logger.error('Uncaught exception in method call: %s', e)
                 self.logger.exception(e)
-                self.connection.send_error(message, 'net.tdbus.UncaughtException.' + e.__class__.__name__,
+                connection.send_error(message, 'net.tdbus.UncaughtException.' + e.__class__.__name__,
                                            format="s", args=[str(e)])
             else:
                 fmt, args = self.local.response
-                self.connection.send_method_return(message, fmt, args)
+                connection.send_method_return(message, fmt, args)
         elif mtype == _tdbus.DBUS_MESSAGE_TYPE_SIGNAL:
-            if member not in self.signal_handlers:
+            if member not in signal_handlers:
                 return False
-            handler = self.signal_handlers[member]
+            handler = signal_handlers[member]
             if handler.interface and handler.interface != message.get_interface():
                 return False
             if handler.path and not fnmatch.fnmatch(message.get_path(), handler.path):
                 return False
             try:
                 self.logger.info("calling signal handler for '%s'", member)
-                handler(message)
+                handler(self, message)
             except Exception as e:
                 self.logger.error('Uncaught exception in signal handler:')
                 self.logger.exception(e)
         else:
             return False
+
+    cls.signal_handlers = signal_handlers
+    cls.set_response = _set_response
+    cls.dispatch = dispatch
+    cls.connection = property(_connection)
+    cls.message = property(_message)
+    cls.logger = logging.getLogger('tdbus')
+
+
+class DBusHandler(object):
+    """Handler for method calls and signals."""
+
+    def __init__(self):
+        _init_handlers(type(self))
+
