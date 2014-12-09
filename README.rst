@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/hmvp/python-tdbus.svg?branch=master)](https://travis-ci.org/hmvp/python-tdbus)
+.. image:: https://travis-ci.org/hmvp/python-tdbus.svg?branch=master
+    :target: https://travis-ci.org/hmvp/python-tdbus
 
 Overview
 ========
