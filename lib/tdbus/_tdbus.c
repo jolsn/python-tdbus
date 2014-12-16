@@ -1934,7 +1934,7 @@ MOD_INIT(_tdbus) {
         do { \
             if ((Pstr = PyUnicode_FromString(name)) == NULL) return MOD_ERROR_VAL; \
             PyDict_SetItemString(Pdict, #name, Pstr); \
-            Py_DECREF(Pint); \
+            Py_DECREF(Pstr); \
         } while (0)
 
     EXPORT_INT_SYMBOL(DBUS_MAJOR_PROTOCOL_VERSION);
