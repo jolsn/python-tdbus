@@ -1900,7 +1900,7 @@ void init_tdbus(void) {
         do { \
             if ((Pstr = PyString_FromString(name)) == NULL) return; \
             PyDict_SetItemString(Pdict, #name, Pstr); \
-            Py_DECREF(Pint); \
+            Py_DECREF(Pstr); \
         } while (0)
 
     EXPORT_STR_SYMBOL(DBUS_SERVICE_DBUS);
