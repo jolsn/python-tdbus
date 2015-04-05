@@ -1,4 +1,4 @@
-#
+#!/usr/bin/env python
 # This file is part of python-tdbus. Python-tdbus is free software
 # available under the terms of the MIT license. See the file "LICENSE" that
 # was provided together with this source file for the licensing terms.
@@ -36,7 +36,7 @@ def pkgconfig(*args):
 
 setup(
     package_dir={ '': 'lib' },
-    packages=['tdbus', 'tdbus.test'],
+    packages=['tdbus'],
     ext_modules=[Extension('tdbus._tdbus', ['lib/tdbus/_tdbus.c'],
               extra_compile_args=pkgconfig('--cflags', 'dbus-1'),
               extra_link_args=pkgconfig('--libs', 'dbus-1'))],

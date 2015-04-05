@@ -16,7 +16,7 @@ import gevent
 from tdbus import GEventDBusConnection, DBUS_BUS_SESSION, DBusError, \
     SimpleDBusConnection, method, DBusHandler
 from tdbus.handler import signal_handler, dbus_object
-from tdbus.test.base import BaseTest
+from .base import BaseTest
 
 
 logging.basicConfig()

@@ -9,7 +9,7 @@ complete list.
 import unittest
 
 from tdbus import SimpleDBusConnection, GEventDBusConnection, DBUS_BUS_SESSION
-from tdbus.test.base import BaseTest
+from .base import BaseTest
 
 
 class TestSimpleDBusConnection(unittest.TestCase, BaseTest):
