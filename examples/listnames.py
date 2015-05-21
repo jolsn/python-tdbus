@@ -17,7 +17,7 @@ from __future__ import division, absolute_import
 from tdbus import SimpleDBusConnection
 import tdbus
 
-conn = SimpleDBusConnection(tdbus.DBUS_BUS_SESSION)
+conn = SimpleDBusConnection(tdbus.DBUS_BUS_SYSTEM)
 
 print('Listing all well-known services on the system bus:')
 print()
