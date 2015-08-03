@@ -887,7 +887,7 @@ _tdbus_check_signature(char *format, int arraydepth, int structdepth)
     char *end, *start, store;
     int isarray, isstruct;
 
-    start = format;
+    start = end = format;
     while (*format != '\000') {
         end = _tdbus_get_one_full_type(format);
         if (end == NULL) return 0;
