@@ -54,7 +54,7 @@ def _set_response(self, format, args):
 
 def _init_handlers(cls):
     methods = {}
-    signal_handlers = {}
+    signal_handlers = []
 
     for name in dir(cls):
         handler = getattr(cls, name)
@@ -62,7 +62,7 @@ def _init_handlers(cls):
         if getattr(handler, 'method', False):
             methods[handler.member] = handler
         elif getattr(handler, 'signal_handler', False):
-            signal_handlers[handler.member] = handler
+            signal_handlers.append(handler)
 
     def dispatch(self, connection, message, ignore_path=False):
         """Dispatch a message. Returns True if the message was dispatched."""
@@ -94,19 +94,19 @@ def _init_handlers(cls):
                 fmt, args = self.local.response
                 connection.send_method_return(message, fmt, args)
         elif mtype == _tdbus.DBUS_MESSAGE_TYPE_SIGNAL:
-            if member not in signal_handlers:
-                return False
-            handler = signal_handlers[member]
-            if handler.interface and handler.interface != message.get_interface():
-                return False
-            if handler.path and not fnmatch.fnmatch(message.get_path(), handler.path):
-                return False
-            try:
-                self.logger.info("calling signal handler for '%s'", member)
-                handler(self, message)
-            except Exception as e:
-                self.logger.error('Uncaught exception in signal handler:')
-                self.logger.exception(e)
+            for handler in signal_handlers:
+                if handler.member != member:
+                    continue
+                if handler.interface and handler.interface != message.get_interface():
+                    continue
+                if handler.path and not fnmatch.fnmatch(message.get_path(), handler.path):
+                    continue
+                try:
+                    self.logger.info("calling signal handler for '%s'", member)
+                    handler(self, message)
+                except Exception as e:
+                    self.logger.error('Uncaught exception in signal handler:')
+                    self.logger.exception(e)
         else:
             return False
 

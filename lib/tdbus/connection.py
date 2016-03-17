@@ -100,7 +100,7 @@ class DBusConnection(object):
         The result of this is that signals will be delivered even if they are not explicitly sent to this client
         """
         for handler in self.handlers:
-            for signal_handler in handler.signal_handlers.values():
+            for signal_handler in handler.signal_handlers:
                 member = "member='%s'" % signal_handler.member if signal_handler.member else  ""
                 interface = "interface='%s'" % signal_handler.interface if signal_handler.interface else  ""
                 path = "path='%s'" % signal_handler.path if signal_handler.path else  ""
